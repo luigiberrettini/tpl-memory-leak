@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.0;net452</TargetFrameworks>
+    <RootNamespace>ConsoleApp</RootNamespace>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <OutputType>Exe</OutputType>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+
+    <Product>ConsoleApp</Product>
+    <Copyright>Copyright © 2019 - present by Luigi Berrettini</Copyright>
+    <AssemblyTitle>Console application</AssemblyTitle>
+    <AssemblyName>ConsoleApp</AssemblyName>
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0-alpha-01-commitHash</InformationalVersion>
+    <NeutralLanguage>en</NeutralLanguage>
+
+    <StartupObject>ConsoleApp.Program</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Extensions\**" />
+    <EmbeddedResource Remove="Extensions\**" />
+    <None Remove="Extensions\**" />
+  </ItemGroup>
+</Project>
