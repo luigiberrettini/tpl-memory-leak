@@ -1,6 +1,3 @@
-// Licensed under the BSD license
-// See the LICENSE file in the project root for more information
-
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -11,40 +8,34 @@ namespace ConsoleApp
 
     internal class AsyncLogger
     {
-        private readonly int timeout;
         private readonly CancellationTokenSource cts;
         private readonly CancellationToken token;
-        private readonly BlockingCollection<AsyncLogEventInfo> queue;
-        private readonly ByteArray buffer;
-        private readonly MessageTransmitter messageTransmitter;
+        private readonly BlockingCollection<string> queue;
 
-        public AsyncLogger(MessageBuilder messageBuilder, MessageTransmitter messageTransmitter, int timeout)
+        public AsyncLogger()
         {
-            this.messageTransmitter = messageTransmitter;
-            this.timeout = timeout;
             cts = new CancellationTokenSource();
             token = cts.Token;
-            queue = new BlockingCollection<AsyncLogEventInfo>();
-            buffer = new ByteArray();
-            Task.Run(() => ProcessQueueAsync(messageBuilder));
+            queue = new BlockingCollection<string>();
+            Task.Run(() => ProcessQueueAsync());
         }
 
-        public void Log(AsyncLogEventInfo asyncLogEvent)
+        public void Log(string asyncLogEvent)
         {
-            Enqueue(asyncLogEvent, timeout);
+            queue.TryAdd(asyncLogEvent, Timeout.Infinite, token);
         }
 
-        private void ProcessQueueAsync(MessageBuilder messageBuilder)
+        private void ProcessQueueAsync()
         {
-            ProcessQueueAsync(messageBuilder, new TaskCompletionSource<object>())
+            ProcessQueueAsync(new TaskCompletionSource<object>())
                 .ContinueWith(t =>
                 {
                     Console.Error.WriteLine(t.Exception?.GetBaseException());
-                    ProcessQueueAsync(messageBuilder);
+                    ProcessQueueAsync();
                 }, token, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
         }
 
-        private Task ProcessQueueAsync(MessageBuilder messageBuilder, TaskCompletionSource<object> tcs)
+        private Task ProcessQueueAsync(TaskCompletionSource<object> tcs)
         {
             if (token.IsCancellationRequested)
                 return tcs.CanceledTask();
@@ -52,10 +43,9 @@ namespace ConsoleApp
             try
             {
                 var asyncLogEventInfo = queue.Take(token);
-                var logEventMsgSet = new LogEventMsgSet(asyncLogEventInfo, buffer, messageBuilder, messageTransmitter);
+                var logEventMsgSet = new LogEventMsgSet(asyncLogEventInfo);
 
                 logEventMsgSet
-                    .Build(string.Empty)
                     .SendAsync(token)
                     .ContinueWith(t =>
                     {
@@ -68,8 +58,8 @@ namespace ConsoleApp
                         if (t.Exception != null) // t.IsFaulted is true
                             Console.Error.WriteLine(t.Exception.GetBaseException().StackTrace, "Task faulted");
                         else
-                            Console.WriteLine("Successfully sent message '{0}'", logEventMsgSet);
-                        ProcessQueueAsync(messageBuilder, tcs);
+                            Console.WriteLine($"Successfully logged '{asyncLogEventInfo}'");
+                        ProcessQueueAsync(tcs);
                     }, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
                 return tcs.Task;
@@ -80,17 +70,11 @@ namespace ConsoleApp
             }
         }
 
-        private void Enqueue(AsyncLogEventInfo asyncLogEventInfo, int timeout)
-        {
-            queue.TryAdd(asyncLogEventInfo, timeout, token);
-        }
-
         public void Dispose()
         {
             cts.Cancel();
             cts.Dispose();
             queue.Dispose();
-            messageTransmitter.Dispose();
         }
     }
 }

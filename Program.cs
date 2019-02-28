@@ -6,12 +6,12 @@ namespace ConsoleApp
 {
     public class Program
     {
-        private static readonly AsyncLogger asyncLogger = new AsyncLogger(new MessageBuilder(), new MessageTransmitter("127.0.0.1", 1514, 100), 100);
-
         public static void Main(string[] args)
         {
             // http://github.com/dotnet/project-system/issues/2239
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
+
+            var asyncLogger = new AsyncLogger();
 
             while (true)
             {
@@ -24,7 +24,7 @@ namespace ConsoleApp
                         return;
                     }
                     for (int i = 0; i < times; i++)
-                        asyncLogger.Log(new AsyncLogEventInfo(DateTime.UtcNow.ToString("o")));
+                        asyncLogger.Log(DateTime.UtcNow.ToString("o"));
                 }
                 catch
                 {
