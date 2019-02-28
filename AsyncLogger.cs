@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,15 +39,17 @@ namespace ConsoleApp
         private Task ProcessQueueAsync(TaskCompletionSource<object> tcs)
         {
             if (token.IsCancellationRequested)
-                return tcs.CanceledTask();
+            {
+                tcs.SetCanceled();
+                return tcs.Task;
+            }
 
             try
             {
                 var asyncLogEventInfo = queue.Take(token);
-                var logEventMsgSet = new LogEventMsgSet(asyncLogEventInfo);
 
-                logEventMsgSet
-                    .SendAsync(token)
+                new StringWriter()
+                    .WriteAsync(asyncLogEventInfo)
                     .ContinueWith(t =>
                     {
                         if (t.IsCanceled)
@@ -66,7 +69,8 @@ namespace ConsoleApp
             }
             catch (Exception exception)
             {
-                return tcs.FailedTask(exception);
+                tcs.SetException(exception);
+                return tcs.Task;
             }
         }
 
